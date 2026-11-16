@@ -1,25 +1,28 @@
-import json
-
 from config import WORDS_FILE
 from src.input_manager import read_words
 from src.yomitan_client import YomitanClient
+from src.anki_client import AnkiClient
 
 
 def main():
     words = read_words(WORDS_FILE)
+
     yomitan = YomitanClient()
+    anki = AnkiClient()
 
     for word in words:
-        print(f"\nLooking up: {word}")
+        print(f"\nProcessing: {word}")
 
-        result = yomitan.lookup_word(word)
-        parsed_entry = yomitan.parse_entry(result)
+        raw_data = yomitan.lookup_word(word)
+        word_data = yomitan.parse_entry(raw_data)
 
-        print(json.dumps(
-            parsed_entry,
-            ensure_ascii=False,
-            indent=2
-        ))
+        if not word_data:
+            print("No dictionary entry found.")
+            continue
+
+        note_id = anki.create_note(word_data)
+
+        print(f"Created Anki note: {note_id}")
 
 
 if __name__ == "__main__":
