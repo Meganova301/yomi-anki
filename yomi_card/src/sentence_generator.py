@@ -27,6 +27,14 @@ class SentenceGenerator:
         - Keep the sentence reasonably short.
         - Provide an accurate, natural English translation.
         - Do not include explanations or romaji.
+
+
+        - Generate a short English image search query.
+        - Use 2-5 descriptive words.
+        - Describe concrete visual elements from the Japanese sentence.
+        - Prefer searchable subjects, actions, places or objects.
+        - Avoid abstract words when possible.
+        - Do not simply repeat the English translation.
         """
 
         response = self.client.models.generate_content(
@@ -38,9 +46,10 @@ class SentenceGenerator:
                     "type": "OBJECT",
                     "properties": {
                         "japanese": {"type": "STRING"},
-                        "english": {"type": "STRING"}
+                        "english": {"type": "STRING"},
+                        "image_query": {"type": "STRING"}
                     },
-                    "required": ["japanese", "english"]
+                    "required": ["japanese", "english", "image_query"]
                 }
             }
         )
@@ -52,5 +61,8 @@ class SentenceGenerator:
 
         if not example["japanese"] or not example["english"]:
             raise ValueError("Gemini returned an incomplete example.")
+        
+        if not example["image_query"].strip():
+            raise ValueError("Gemini returned an empty image query.")
 
         return example

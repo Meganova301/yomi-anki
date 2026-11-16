@@ -42,7 +42,7 @@ def main():
         image_info = None
 
         try:
-            image_info = images.search_image(example["english"])
+            image_info = images.search_image(example["image_query"])
 
             if image_info:
                 picture = images.download_image(image_info)

@@ -17,7 +17,8 @@ class TestSentenceGenerator(unittest.TestCase):
     def test_generate_example(self):
         expected = {
             "japanese": "彼は手がかりを見逃した。",
-            "english": "He overlooked the clue."
+            "english": "He overlooked the clue.",
+            "image_query": "detective examining clues"
         }
 
         response = Mock()
