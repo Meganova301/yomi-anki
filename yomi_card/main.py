@@ -1,7 +1,9 @@
+
 from config import WORDS_FILE
 from src.input_manager import read_words
 from src.yomitan_client import YomitanClient
 from src.anki_client import AnkiClient
+from src.sentence_generator import SentenceGenerator
 
 
 def main():
@@ -9,6 +11,7 @@ def main():
 
     yomitan = YomitanClient()
     anki = AnkiClient()
+    generator = SentenceGenerator()
 
     for word in words:
         print(f"\nProcessing: {word}")
@@ -29,8 +32,20 @@ def main():
             print("No matching Yomitan audio found.")
             continue
 
-        note_id = anki.create_note(word_data, audio)
+        example = generator.generate_example(
+            word_data["word"],
+            word_data["reading"],
+            word_data["definition"]
+        )
 
+        note_id = anki.create_note(
+            word_data,
+            audio=audio,
+            example=example
+        )
+
+        print(f"Japanese: {example['japanese']}")
+        print(f"English: {example['english']}")
         print(f"Created Anki note: {note_id}")
 
 

@@ -1,5 +1,5 @@
 import requests
-
+from html import escape
 from config import ANKI_URL, ANKI_DECK, ANKI_MODEL
 
 
@@ -26,16 +26,26 @@ class AnkiClient:
 
         return data["result"]
 
-    def create_note(self, word_data, audio=None):
-        word = word_data["word"]
-        reading = word_data["reading"]
-        definition = word_data["definition"]
+
+    def create_note(self, word_data, audio=None, example=None):
+        word = escape(word_data["word"])
+        reading = escape(word_data["reading"])
+        definition = escape(word_data["definition"])
         frequency = word_data["frequency"]
 
         back = f"{reading}<hr>{definition}"
 
         if frequency is not None:
             back += f"<br>Frequency: {frequency}"
+
+        if example:
+            japanese = escape(example["japanese"])
+            english = escape(example["english"])
+
+            back += (
+                f"<hr>{japanese}"
+                f"<br>{english}"
+            )
 
         note = {
             "deckName": ANKI_DECK,
