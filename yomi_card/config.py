@@ -1,2 +1,4 @@
-YOMITAN_URL = "http://localhost:3000"
 WORDS_FILE = "data/words.txt"
+
+YOMITAN_URL = "http://127.0.0.1:19633"
+YOMITAN_TIMEOUT = 10
