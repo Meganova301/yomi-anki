@@ -33,6 +33,7 @@ class TestAnkiClient(unittest.TestCase):
             "みのがす",
             params["note"]["fields"]["Back"]
         )
+        self.assertNotIn("audio", params["note"])
 
 
 if __name__ == "__main__":

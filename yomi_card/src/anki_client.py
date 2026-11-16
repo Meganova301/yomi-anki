@@ -26,7 +26,7 @@ class AnkiClient:
 
         return data["result"]
 
-    def create_note(self, word_data):
+    def create_note(self, word_data, audio=None):
         word = word_data["word"]
         reading = word_data["reading"]
         definition = word_data["definition"]
@@ -50,5 +50,8 @@ class AnkiClient:
             },
             "tags": ["yomicard"]
         }
+
+        if audio:
+            note["audio"] = [audio]
 
         return self.request("addNote", {"note": note})

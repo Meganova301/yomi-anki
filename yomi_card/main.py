@@ -20,7 +20,16 @@ def main():
             print("No dictionary entry found.")
             continue
 
-        note_id = anki.create_note(word_data)
+        audio = yomitan.get_audio(
+            word_data["word"],
+            word_data["reading"]
+        )
+
+        if not audio:
+            print("No matching Yomitan audio found.")
+            continue
+
+        note_id = anki.create_note(word_data, audio)
 
         print(f"Created Anki note: {note_id}")
 

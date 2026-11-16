@@ -81,3 +81,45 @@ class YomitanClient:
         if isinstance(node, dict):
             return self._content_text(node.get("content", ""))
         return ""
+
+    def get_audio(self, word, reading):
+        response = requests.post(
+            f"{YOMITAN_URL}/ankiFields",
+            json={
+                "text": word,
+                "type": "term",
+                "markers": ["expression", "reading", "audio"],
+                "maxEntries": 10,
+                "includeMedia": True
+            },
+            timeout=YOMITAN_TIMEOUT
+        )
+
+        response.raise_for_status()
+        data = response.json()
+
+        for field in data.get("fields", []):
+            if field.get("expression") != word:
+                continue
+
+            if field.get("reading") != reading:
+                continue
+
+            audio_tag = field.get("audio", "")
+
+            for audio in data.get("audioMedia", []):
+                filename = audio.get("ankiFilename")
+
+                if audio_tag != f"[sound:{filename}]":
+                    continue
+
+                if not audio.get("content"):
+                    continue
+
+                return {
+                    "filename": filename,
+                    "data": audio["content"],
+                    "fields": ["Back"]
+                }
+
+        return None
