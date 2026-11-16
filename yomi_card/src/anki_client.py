@@ -27,7 +27,7 @@ class AnkiClient:
         return data["result"]
 
 
-    def create_note(self, word_data, audio=None, example=None):
+    def create_note(self, word_data, audio=None, example=None, picture=None, image_info=None):
         word = escape(word_data["word"])
         reading = escape(word_data["reading"])
         definition = escape(word_data["definition"])
@@ -47,6 +47,15 @@ class AnkiClient:
                 f"<br>{english}"
             )
 
+        if image_info:
+            credit = escape(image_info["credit"])
+            source = escape(image_info["source"], quote=True)
+
+            back += (
+                f'<br><small>'
+                f'<a href="{source}">{credit}</a>'
+                f'</small>'
+            )
         note = {
             "deckName": ANKI_DECK,
             "modelName": ANKI_MODEL,
@@ -63,5 +72,8 @@ class AnkiClient:
 
         if audio:
             note["audio"] = [audio]
+            
+        if picture:
+            note["picture"] = [picture]
 
         return self.request("addNote", {"note": note})

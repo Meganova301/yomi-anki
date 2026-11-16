@@ -8,3 +8,8 @@ ANKI_DECK = "YomiCard"
 ANKI_MODEL = "Basic"
 
 GEMINI_MODEL = "gemini-3.5-flash-lite"
+
+import os
+
+PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY")
+IMAGE_TIMEOUT = 10

@@ -1,9 +1,10 @@
-
+import requests
 from config import WORDS_FILE
 from src.input_manager import read_words
 from src.yomitan_client import YomitanClient
 from src.anki_client import AnkiClient
 from src.sentence_generator import SentenceGenerator
+from src.image_provider import ImageProvider
 
 
 def main():
@@ -12,7 +13,7 @@ def main():
     yomitan = YomitanClient()
     anki = AnkiClient()
     generator = SentenceGenerator()
-
+    images = ImageProvider()
     for word in words:
         print(f"\nProcessing: {word}")
 
@@ -37,11 +38,27 @@ def main():
             word_data["reading"],
             word_data["definition"]
         )
+        picture = None
+        image_info = None
+
+        try:
+            image_info = images.search_image(example["english"])
+
+            if image_info:
+                picture = images.download_image(image_info)
+            else:
+                print("No matching image found.")
+
+        except (requests.RequestException, ValueError) as error:
+            print(f"Image unavailable: {error}")
+            image_info = None
 
         note_id = anki.create_note(
             word_data,
             audio=audio,
-            example=example
+            example=example,
+            picture=picture,
+            image_info=image_info
         )
 
         print(f"Japanese: {example['japanese']}")
