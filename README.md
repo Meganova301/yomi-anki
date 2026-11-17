@@ -53,7 +53,8 @@ word is reported without stopping the rest of the batch.
 
 - Python. The current project has been tested with Python 3.14.
 - Anki Desktop with the **AnkiConnect** add-on installed and running.
-- Yomitan with its local API available.
+- Yomitan with its local API available.(for instructions refer to:
+  https://github.com/yomidevs/yomitan-api/blob/master/README.md)
 - A Google Gemini API key.
 - A Pixabay API key for image search (optional).
 
