@@ -35,6 +35,27 @@ class TestAnkiClient(unittest.TestCase):
         )
         self.assertNotIn("audio", params["note"])
 
+        
+    @patch.object(AnkiClient, "request")
+    def test_get_existing_words(self, mock_request):
+        mock_request.side_effect = [
+            [101, 102],
+            [
+                {"fields": {"Front": {"value": "見逃す"}}},
+                {"fields": {"Front": {"value": "違和感"}}}
+            ]
+        ]
+
+        client = AnkiClient()
+        words = client.get_existing_words()
+
+        self.assertEqual(
+            words,
+            {"見逃す", "違和感"}
+        )
+
+        self.assertTrue(client.note_exists("見逃す", words))
+        self.assertFalse(client.note_exists("夕焼け", words))
 
 if __name__ == "__main__":
     unittest.main()

@@ -77,3 +77,30 @@ class AnkiClient:
             note["picture"] = [picture]
 
         return self.request("addNote", {"note": note})
+
+    def get_existing_words(self):
+        query = f'deck:"{ANKI_DECK}"'
+        note_ids = self.request("findNotes", {"query": query})
+
+        existing_words = set()
+
+        for i in range(0, len(note_ids), 100):
+            batch = note_ids[i:i + 100]
+
+            notes = self.request(
+                "notesInfo",
+                {"notes": batch}
+            )
+
+            for note in notes:
+                front = note.get("fields", {}).get("Front", {})
+                word = front.get("value", "").strip()
+
+                if word:
+                    existing_words.add(word)
+
+        return existing_words
+
+    def note_exists(self, word, existing_words):
+        return word in existing_words
+
