@@ -1,6 +1,25 @@
 import requests
 from html import escape
 from config import ANKI_URL, ANKI_DECK, ANKI_MODEL
+from src.http_utils import request_with_retries
+
+
+_REQUIRED_MODEL_FIELDS = frozenset({
+    "Word",
+    "Word Reading",
+    "Word Meaning",
+    "Word Furigana",
+    "Word Audio",
+    "Sentence",
+    "Sentence Meaning",
+    "Sentence Furigana",
+    "Sentence Audio",
+    "Notes",
+    "Pitch Accent",
+    "Pitch Accent Notes",
+    "Frequency",
+    "Picture",
+})
 
 
 class AnkiClient:
@@ -12,13 +31,20 @@ class AnkiClient:
             "params": params or {}
         }
 
-        response = requests.post(
+        response = request_with_retries(
+            requests.post,
             ANKI_URL,
             json=payload,
-            timeout=10
+            timeout=10,
+            retry_safe=action in {
+                "deckNames",
+                "modelNames",
+                "modelFieldNames",
+                "findNotes",
+                "notesInfo",
+            },
         )
 
-        response.raise_for_status()
         data = response.json()
 
         if data.get("error"):
@@ -26,53 +52,77 @@ class AnkiClient:
 
         return data["result"]
 
-
-    def create_note(self, word_data, audio=None, example=None, picture=None, image_info=None):
-        word = escape(word_data["word"])
-        reading = escape(word_data["reading"])
-        definition = escape(word_data["definition"])
-        frequency = word_data["frequency"]
-
-        back = f"{reading}<hr>{definition}"
-
-        if frequency is not None:
-            back += f"<br>Frequency: {frequency}"
-
-        if example:
-            japanese = escape(example["japanese"])
-            english = escape(example["english"])
-
-            back += (
-                f"<hr>{japanese}"
-                f"<br>{english}"
+    def validate_destination(self):
+        deck_names = self.request("deckNames")
+        if ANKI_DECK not in deck_names:
+            raise RuntimeError(
+                f"Anki deck '{ANKI_DECK}' was not found. "
+                "Create it in Anki or update ANKI_DECK."
             )
 
+        model_names = self.request("modelNames")
+        if ANKI_MODEL not in model_names:
+            raise RuntimeError(
+                f"Anki note type '{ANKI_MODEL}' was not found. "
+                "Install it in Anki or update ANKI_MODEL."
+            )
+
+        field_names = self.request(
+            "modelFieldNames",
+            {"modelName": ANKI_MODEL},
+        )
+        missing_fields = _REQUIRED_MODEL_FIELDS.difference(field_names)
+        if missing_fields:
+            missing = ", ".join(sorted(missing_fields))
+            raise RuntimeError(
+                f"Anki note type '{ANKI_MODEL}' is missing required fields: "
+                f"{missing}."
+            )
+
+
+    def create_note(
+        self,
+        word_data,
+        example,
+        sentence_furigana,
+        audio=None,
+        picture=None,
+        image_info=None,
+    ):
+        notes = ""
         if image_info:
-            credit = escape(image_info["credit"])
             source = escape(image_info["source"], quote=True)
+            credit = escape(image_info["credit"])
+            notes = f'<a href="{source}">{credit}</a>'
 
-            back += (
-                f'<br><small>'
-                f'<a href="{source}">{credit}</a>'
-                f'</small>'
-            )
         note = {
             "deckName": ANKI_DECK,
             "modelName": ANKI_MODEL,
             "fields": {
-                "Front": word,
-                "Back": back
+                "Word": escape(word_data["word"]),
+                "Word Reading": escape(word_data["reading"]),
+                "Word Meaning": escape(example["ai_definition"]),
+                "Word Furigana": word_data["furigana"],
+                "Word Audio": "",
+                "Sentence": escape(example["japanese"]),
+                "Sentence Meaning": escape(example["english"]),
+                "Sentence Furigana": sentence_furigana,
+                "Sentence Audio": "",
+                "Notes": notes,
+                "Pitch Accent": "",
+                "Pitch Accent Notes": "",
+                "Frequency": word_data["frequency_harmonic_rank"],
+                "Picture": "",
             },
             "options": {
                 "allowDuplicate": False,
-                "duplicateScope": "deck"
+                "duplicateScope": "deck",
             },
-            "tags": ["yomicard"]
+            "tags": ["yomicard"],
         }
 
         if audio:
             note["audio"] = [audio]
-            
         if picture:
             note["picture"] = [picture]
 
@@ -93,8 +143,11 @@ class AnkiClient:
             )
 
             for note in notes:
-                front = note.get("fields", {}).get("Front", {})
-                word = front.get("value", "").strip()
+                fields = note.get("fields", {})
+                word = fields.get("Word", {}).get("value", "").strip()
+
+                if not word:
+                    word = fields.get("Front", {}).get("value", "").strip()
 
                 if word:
                     existing_words.add(word)

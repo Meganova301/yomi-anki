@@ -4,8 +4,8 @@ YOMITAN_URL = "http://127.0.0.1:19633"
 YOMITAN_TIMEOUT = 10
 
 ANKI_URL = "http://127.0.0.1:8765"
-ANKI_DECK = "YomiCard"
-ANKI_MODEL = "Basic"
+ANKI_DECK = "YomiCardV2"
+ANKI_MODEL = "Kaishi 1.5k"
 
 GEMINI_MODEL = "gemini-3.5-flash-lite"
 

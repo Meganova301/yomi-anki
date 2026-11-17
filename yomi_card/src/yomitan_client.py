@@ -1,15 +1,18 @@
 import requests
+from html import escape
+from src.http_utils import request_with_retries
 
 from config import YOMITAN_URL, YOMITAN_TIMEOUT
 class YomitanClient:
     def lookup_word(self, word):
-        response = requests.post(
+        response = request_with_retries(
+            requests.post,
             f"{YOMITAN_URL}/termEntries",
             json={"term": word},
-            timeout=YOMITAN_TIMEOUT
+            timeout=YOMITAN_TIMEOUT,
+            retry_safe=True,
         )
 
-        response.raise_for_status()
 
         return response.json()
 
@@ -82,44 +85,116 @@ class YomitanClient:
             return self._content_text(node.get("content", ""))
         return ""
 
-    def get_audio(self, word, reading):
-        response = requests.post(
+    def get_sentence_furigana(self, sentence):
+        response = request_with_retries(
+            requests.post,
+            f"{YOMITAN_URL}/tokenize",
+            json={"text": sentence, "scanLength": 10},
+            timeout=YOMITAN_TIMEOUT,
+            retry_safe=True,
+        )
+        results = response.json()
+        if (
+            not isinstance(results, list)
+            or not results
+            or not isinstance(results[0], dict)
+        ):
+            raise ValueError("Yomitan returned no sentence tokenization.")
+
+        content = results[0].get("content")
+        if not isinstance(content, list) or not content:
+            raise ValueError("Yomitan returned no sentence tokens.")
+
+        rendered = []
+        cursor = 0
+
+        for group in content:
+            if not isinstance(group, list) or not group:
+                continue
+
+            segment = group[0]
+            if not isinstance(segment, dict):
+                raise ValueError("Yomitan returned an invalid sentence token.")
+
+            text = segment.get("text")
+            reading = segment.get("reading", "")
+            if not isinstance(text, str) or not isinstance(reading, str):
+                raise ValueError("Yomitan returned an invalid token reading.")
+            if not text:
+                continue
+
+            position = sentence.find(text, cursor)
+            if position == -1:
+                raise ValueError(
+                    "Yomitan returned token text that does not match the sentence."
+                )
+
+            rendered.append(escape(sentence[cursor:position]))
+
+            escaped_text = escape(text)
+            if reading and reading != text:
+                rendered.append(
+                    f"<ruby>{escaped_text}<rt>{escape(reading)}</rt></ruby>"
+                )
+            else:
+                rendered.append(escaped_text)
+
+            cursor = position + len(text)
+
+        rendered.append(escape(sentence[cursor:]))
+        return "".join(rendered)
+
+    def get_term_card_data(self, word, reading):
+        response = request_with_retries(
+            requests.post,
             f"{YOMITAN_URL}/ankiFields",
             json={
                 "text": word,
                 "type": "term",
-                "markers": ["expression", "reading", "audio"],
+                "markers": [
+                    "expression",
+                    "reading",
+                    "audio",
+                    "furigana",
+                    "frequency-harmonic-rank",
+                ],
                 "maxEntries": 10,
-                "includeMedia": True
+                "includeMedia": True,
             },
-            timeout=YOMITAN_TIMEOUT
+            timeout=YOMITAN_TIMEOUT,
+            retry_safe=True,
         )
-
-        response.raise_for_status()
         data = response.json()
 
         for field in data.get("fields", []):
             if field.get("expression") != word:
                 continue
-
             if field.get("reading") != reading:
                 continue
 
+            furigana = field.get("furigana")
+            if not isinstance(furigana, str) or not furigana:
+                raise ValueError("Yomitan did not return word furigana.")
+
             audio_tag = field.get("audio", "")
-
-            for audio in data.get("audioMedia", []):
-                filename = audio.get("ankiFilename")
-
-                if audio_tag != f"[sound:{filename}]":
+            for media in data.get("audioMedia", []):
+                filename = media.get("ankiFilename")
+                if audio_tag != f"[sound:{filename}]" or not media.get("content"):
                     continue
 
-                if not audio.get("content"):
-                    continue
-
+                frequency = field.get("frequency-harmonic-rank")
                 return {
-                    "filename": filename,
-                    "data": audio["content"],
-                    "fields": ["Back"]
+                    "audio": {
+                        "filename": filename,
+                        "data": media["content"],
+                        "fields": ["Word Audio"],
+                    },
+                    "furigana": furigana,
+                    "frequency_harmonic_rank": (
+                        "" if frequency is None else str(frequency)
+                    ),
                 }
+
+            return None
 
         return None

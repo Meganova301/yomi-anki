@@ -53,7 +53,7 @@ class TestImageProvider(unittest.TestCase):
         })
 
         self.assertEqual(result["filename"], "test.jpg")
-        self.assertEqual(result["fields"], ["Back"])
+        self.assertEqual(result["fields"], ["Picture"])
         self.assertTrue(result["data"])
 
 

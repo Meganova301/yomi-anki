@@ -12,12 +12,13 @@ from src.image_provider import ImageProvider
 def main():
     words = read_words(WORDS_FILE)
 
-    yomitan = YomitanClient()
     anki = AnkiClient()
+    anki.validate_destination()
+    existing_words = anki.get_existing_words()
+
+    yomitan = YomitanClient()
     generator = SentenceGenerator()
     images = ImageProvider()
-
-    existing_words = anki.get_existing_words()
 
     created = 0
     skipped = 0
@@ -47,20 +48,29 @@ def main():
                 skipped += 1
                 continue
 
-            audio = yomitan.get_audio(
+            term_data = yomitan.get_term_card_data(
                 word_data["word"],
                 word_data["reading"]
             )
 
-            if not audio:
+            if term_data is None:
                 print("Skipped: No Yomitan audio.")
                 skipped += 1
                 continue
+
+            word_data["furigana"] = term_data["furigana"]
+            word_data["frequency_harmonic_rank"] = term_data[
+                "frequency_harmonic_rank"
+            ]
+            audio = term_data["audio"]
 
             example = generator.generate_example(
                 word_data["word"],
                 word_data["reading"],
                 word_data["definition"]
+            )
+            sentence_furigana = yomitan.get_sentence_furigana(
+                example["japanese"]
             )
 
             picture = None
@@ -80,8 +90,9 @@ def main():
 
             note_id = anki.create_note(
                 word_data,
-                audio=audio,
                 example=example,
+                sentence_furigana=sentence_furigana,
+                audio=audio,
                 picture=picture,
                 image_info=image_info
             )

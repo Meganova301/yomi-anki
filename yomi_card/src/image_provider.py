@@ -1,7 +1,7 @@
 
 import base64
 import requests
-
+from src.http_utils import request_with_retries
 from config import PIXABAY_API_KEY, IMAGE_TIMEOUT
 
 
@@ -11,19 +11,19 @@ class ImageProvider:
         if not PIXABAY_API_KEY:
             raise ValueError("PIXABAY_API_KEY is not configured.")
 
-        response = requests.get(
+        response = request_with_retries(
+            requests.get,
             "https://pixabay.com/api/",
             params={
                 "key": PIXABAY_API_KEY,
                 "q": query[:100],
                 "image_type": "all",
                 "safesearch": "true",
-                "per_page": 3
+                "per_page": 3,
             },
-            timeout=IMAGE_TIMEOUT
+            timeout=IMAGE_TIMEOUT,
+            retry_safe=True,
         )
-
-        response.raise_for_status()
 
         images = response.json().get("hits", [])
 
@@ -40,9 +40,11 @@ class ImageProvider:
         }
 
     def download_image(self, image):
-        response = requests.get(
+        response = request_with_retries(
+            requests.get,
             image["url"],
-            timeout=IMAGE_TIMEOUT
+            timeout=IMAGE_TIMEOUT,
+            retry_safe=True,
         )
 
         response.raise_for_status()
@@ -61,5 +63,5 @@ class ImageProvider:
         return {
             "filename": image["filename"],
             "data": encoded_image,
-            "fields": ["Back"]
+            "fields": ["Picture"]
         }
